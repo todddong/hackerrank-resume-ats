@@ -460,10 +460,12 @@ class AnthropicProvider:
         if prefill:
             user_messages = user_messages + [{"role": "assistant", "content": prefill}]
 
+        temperature = (options or {}).get("temperature", 0.0)
         params = {
             "model": model,
             "max_tokens": 8096,
             "messages": user_messages,
+            "temperature": temperature,
         }
         if system:
             params["system"] = system

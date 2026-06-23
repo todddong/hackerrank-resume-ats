@@ -27,8 +27,8 @@ if PROVIDER not in [p.value for p in ModelProvider]:
 # Model-specific parameters
 MODEL_PARAMETERS = {
     # Anthropic Claude models
-    "claude-haiku-4-5-20251001": {"temperature": 0.1, "top_p": 0.9},
-    "claude-sonnet-4-6": {"temperature": 0.1, "top_p": 0.9},
+    "claude-haiku-4-5-20251001": {"temperature": 0.0, "top_p": 1.0},
+    "claude-sonnet-4-6": {"temperature": 0.0, "top_p": 1.0},
     # OpenAI models
     "gpt-4o-mini": {"temperature": 0.1, "top_p": 0.9},
     "gpt-4o": {"temperature": 0.1, "top_p": 0.9},
