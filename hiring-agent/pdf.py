@@ -3,6 +3,7 @@ import sys
 import json
 import time
 import logging
+import concurrent.futures
 import pymupdf
 
 from models import (
@@ -286,9 +287,36 @@ class PDFHandler:
             "meta": None,
         }
 
-        for section_name in sections:
-            section_data = self._extract_section_data(text_content, section_name)
+        # Extract the independent sections concurrently. Each section is a
+        # separate, network-bound LLM call with no dependency on the others,
+        # so running them in threads lets API providers process them in
+        # parallel (parse latency drops from the sum of all calls to the
+        # slowest single call). Results are merged below in the original
+        # `sections` order, so the merge semantics are identical to the
+        # previous sequential loop.
+        section_results: Dict[str, Optional[Dict]] = {}
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(sections)
+        ) as executor:
+            future_to_section = {
+                executor.submit(
+                    self._extract_section_data, text_content, section_name
+                ): section_name
+                for section_name in sections
+            }
+            for future in concurrent.futures.as_completed(future_to_section):
+                section_name = future_to_section[future]
+                try:
+                    section_results[section_name] = future.result()
+                except Exception as e:
+                    logger.error(f"❌ Error extracting {section_name} section: {e}")
+                    section_results[section_name] = None
 
+        # Merge in the original section order: if a section response carries
+        # extra keys, the canonical later section overwrites them, exactly as
+        # the sequential version did. Abort on the first section that failed.
+        for section_name in sections:
+            section_data = section_results.get(section_name)
             if section_data:
                 complete_resume.update(section_data)
                 logger.debug(f"✅ Successfully extracted {section_name} section")
